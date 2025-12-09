@@ -399,6 +399,8 @@
                 <label>Dokter Penanggung Jawab</label>
                 <select id="dokter">
                     <option value="dr. Ahmad Ricardo Syukur Silalahi, Sp.And">dr. Ahmad Ricardo Syukur Silalahi, Sp.And</option>
+                    <option value="David Martua Sitinjak, S.Tr.Kes.">David Martua Sitinjak, S.Tr.Kes.</option>
+                    <option value="Viorentin Natalia Moi, S.Tr.Kes.">Viorentin Natalia Moi, S.Tr.Kes.</option>
                     <option value="Lainnya">Lainnya (sebutkan)</option>
                 </select>
                 <input type="text" id="dokterLainnya" placeholder="Masukkan nama dokter lainnya">
@@ -450,6 +452,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx5behWUwxbJCiQxcJtp2hPDoeWHo6cmQ",
@@ -463,10 +466,10 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const database = getDatabase(app);
         const dataRef = ref(database, 'labData');
 
-        // PERBAIKAN: Gunakan array untuk menyimpan data dengan key Firebase yang benar
         let dataArray = [];
         let editKey = null;
         const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -490,7 +493,6 @@
             }
         }
 
-        // PERBAIKAN: Simpan data dengan key yang benar
         onValue(dataRef, (snapshot) => {
             dataArray = [];
             
@@ -503,7 +505,6 @@
                     });
                 });
                 
-                // Sort berdasarkan tanggal dan timestamp
                 dataArray.sort((a, b) => {
                     const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
                     if (dateCompare !== 0) return dateCompare;
@@ -588,7 +589,6 @@
             const date = new Date(tanggal + 'T00:00:00');
             const namaHari = hari[date.getDay()];
             
-            // PERBAIKAN: Simpan data dengan struktur yang benar
             const newData = {
                 tanggal: tanggal,
                 hari: namaHari,
@@ -597,8 +597,6 @@
                 dokter: dokter,
                 timestamp: Date.now()
             };
-            
-            console.log('Data yang akan disimpan:', newData);
             
             try {
                 const btnAdd = document.getElementById('btnAdd');
@@ -618,7 +616,6 @@
             }
         }
         
-        // PERBAIKAN: Gunakan key Firebase yang benar
         function editData(key) {
             const item = dataArray.find(d => d.key === key);
             if (!item) return;
@@ -629,10 +626,13 @@
             document.getElementById('jenisPemeriksaan').value = item.jenis;
             document.getElementById('jumlah').value = item.jumlah;
             
-            if (item.dokter === 'dr. Ahmad Ricardo Syukur Silalahi, Sp.And') {
-                document.getElementById('dokter').value = item.dokter;
+            const dokterSelect = document.getElementById('dokter');
+            const dokterOptions = Array.from(dokterSelect.options).map(opt => opt.value);
+            
+            if (dokterOptions.includes(item.dokter)) {
+                dokterSelect.value = item.dokter;
             } else {
-                document.getElementById('dokter').value = 'Lainnya';
+                dokterSelect.value = 'Lainnya';
                 document.getElementById('dokterLainnya').value = item.dokter;
             }
             toggleDokterLainnya();
@@ -744,7 +744,6 @@
             const jenisCount = {};
             let totalPasien = 0;
             
-            // PERBAIKAN: Gunakan key yang benar untuk setiap row
             dataArray.forEach((item, index) => {
                 const row = tbody.insertRow();
                 row.className = editKey === item.key ? 'edit-mode' : '';
@@ -761,323 +760,4 @@
                             <button class="btn-delete" data-key="${item.key}">🗑️ Hapus</button>
                         </div>
                     </td>
-                `;
                 
-                jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
-                totalPasien += item.jumlah;
-            });
-            
-            // Add event listeners untuk button edit dan delete
-            document.querySelectorAll('.btn-edit').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const key = this.getAttribute('data-key');
-                    editData(key);
-                });
-            });
-            
-            document.querySelectorAll('.btn-delete').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const key = this.getAttribute('data-key');
-                    hapusData(key);
-                });
-            });
-            
-            summaryDiv.innerHTML = `
-                <div class="summary-card">
-                    <h3>Total Pasien</h3>
-                    <div class="value">${totalPasien}</div>
-                </div>
-            `;
-            
-            Object.keys(jenisCount).sort().forEach(jenis => {
-                summaryDiv.innerHTML += `
-                    <div class="summary-card">
-                        <h3>${jenis}</h3>
-                        <div class="value">${jenisCount[jenis]}</div>
-                    </div>
-                `;
-            });
-            
-            summaryDiv.style.display = 'grid';
-            
-            // Buat laporan bulanan
-            const monthlyData = {};
-            dataArray.forEach(item => {
-                const date = new Date(item.tanggal + 'T00:00:00');
-                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                
-                if (!monthlyData[monthYear]) {
-                    monthlyData[monthYear] = {
-                        totalPasien: 0,
-                        jenis: {},
-                        dokter: {}
-                    };
-                }
-                
-                monthlyData[monthYear].totalPasien += item.jumlah;
-                monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
-                monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
-            });
-            
-            const monthlyReportContainer = document.getElementById('monthlyReportContainer');
-            monthlyReportContainer.innerHTML = '';
-            
-            Object.keys(monthlyData).sort().reverse().forEach(monthYear => {
-                const [year, month] = monthYear.split('-');
-                const monthName = bulan[parseInt(month) - 1];
-                const stats = monthlyData[monthYear];
-                
-                let statsHTML = '<div class="stats-grid">';
-                statsHTML += `
-                    <div class="stat-item">
-                        <div class="label">Total Pasien</div>
-                        <div class="value">${stats.totalPasien}</div>
-                    </div>
-                `;
-                
-                Object.keys(stats.jenis).sort().forEach(jenis => {
-                    const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
-                    statsHTML += `
-                        <div class="stat-item">
-                            <div class="label">${jenis}</div>
-                            <div class="value">${stats.jenis[jenis]} (${persentase}%)</div>
-                        </div>
-                    `;
-                });
-                
-                statsHTML += '</div>';
-                
-                Object.keys(stats.dokter).sort().forEach(dokter => {
-                    const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
-                    
-                    const today = new Date();
-                    const todayStr = `${today.getDate()} ${bulan[today.getMonth()]} ${today.getFullYear()}`;
-                    
-                    statsHTML += `
-                        <div class="signature-section">
-                            <div class="date">${todayStr}</div>
-                            <div style="margin-bottom: 10px; color: #64748b;">Jumlah Pasien: <strong style="color: #2563eb;">${stats.dokter[dokter]}</strong> dari ${stats.totalPasien} pasien (<strong style="color: #2563eb;">${persentaseDokter}%</strong>)</div>
-                            <div style="margin: 50px 0 10px 0; font-style: italic; color: #94a3b8;">( tanda tangan )</div>
-                            <div class="name">${dokter}</div>
-                        </div>
-                    `;
-                });
-                
-                monthlyReportContainer.innerHTML += `
-                    <div class="month-card">
-                        <h3>📅 ${monthName} ${year}</h3>
-                        ${statsHTML}
-                    </div>
-                `;
-            });
-            
-            monthlyReportDiv.style.display = 'block';
-        }
-        
-        function formatTanggal(tanggal) {
-            const date = new Date(tanggal + 'T00:00:00');
-            const options = { year: 'numeric', month: 'long', day: 'numeric' };
-            return date.toLocaleDateString('id-ID', options);
-        }
-        
-        // PERBAIKAN: Gunakan key Firebase yang benar untuk hapus
-        async function hapusData(key) {
-            const item = dataArray.find(d => d.key === key);
-            if (!item) return;
-            
-            if (confirm(`Yakin ingin menghapus data ${item.jenis} tanggal ${formatTanggal(item.tanggal)}?`)) {
-                try {
-                    await remove(ref(database, 'labData/' + key));
-                    showAlert('success', 'Data berhasil dihapus!');
-                } catch (error) {
-                    console.error('Error deleting data:', error);
-                    showAlert('error', 'Gagal menghapus data: ' + error.message);
-                }
-            }
-        }
-        
-        async function hapusSemua() {
-            if (dataArray.length === 0) {
-                showAlert('error', 'Tidak ada data untuk dihapus!');
-                return;
-            }
-            
-            if (confirm('Yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan!')) {
-                try {
-                    const btnClear = document.getElementById('btnClear');
-                    btnClear.disabled = true;
-                    btnClear.textContent = '⏳ Menghapus...';
-                    
-                    await remove(dataRef);
-                    batalEdit();
-                    showAlert('success', 'Semua data berhasil dihapus!');
-                } catch (error) {
-                    console.error('Error clearing data:', error);
-                    showAlert('error', 'Gagal menghapus data: ' + error.message);
-                } finally {
-                    const btnClear = document.getElementById('btnClear');
-                    btnClear.disabled = false;
-                    btnClear.textContent = '🗑️ Hapus Semua';
-                }
-            }
-        }
-        
-        function exportToExcel() {
-            if (dataArray.length === 0) {
-                showAlert('error', 'Tidak ada data untuk diekspor!');
-                return;
-            }
-            
-            const excelData = dataArray.map((item, index) => ({
-                'No': index + 1,
-                'Tanggal Pemeriksaan': formatTanggal(item.tanggal),
-                'Hari': item.hari,
-                'Jenis Pemeriksaan': item.jenis,
-                'Jumlah Pasien': item.jumlah,
-                'Dokter Penanggung Jawab': item.dokter
-            }));
-            
-            const jenisCount = {};
-            let totalPasien = 0;
-            
-            dataArray.forEach(item => {
-                jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
-                totalPasien += item.jumlah;
-            });
-            
-            excelData.push({});
-            excelData.push({
-                'No': 'RINGKASAN KESELURUHAN',
-                'Tanggal Pemeriksaan': '',
-                'Hari': '',
-                'Jenis Pemeriksaan': '',
-                'Jumlah Pasien': '',
-                'Dokter Penanggung Jawab': ''
-            });
-            
-            Object.keys(jenisCount).sort().forEach(jenis => {
-                const persentase = ((jenisCount[jenis] / totalPasien) * 100).toFixed(1);
-                excelData.push({
-                    'No': '',
-                    'Tanggal Pemeriksaan': jenis,
-                    'Hari': '',
-                    'Jenis Pemeriksaan': '',
-                    'Jumlah Pasien': jenisCount[jenis],
-                    'Dokter Penanggung Jawab': `${persentase}%`
-                });
-            });
-            
-            excelData.push({
-                'No': '',
-                'Tanggal Pemeriksaan': 'TOTAL KESELURUHAN',
-                'Hari': '',
-                'Jenis Pemeriksaan': '',
-                'Jumlah Pasien': totalPasien,
-                'Dokter Penanggung Jawab': '100%'
-            });
-            
-            const monthlyData = {};
-            dataArray.forEach(item => {
-                const date = new Date(item.tanggal + 'T00:00:00');
-                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                
-                if (!monthlyData[monthYear]) {
-                    monthlyData[monthYear] = { totalPasien: 0, jenis: {}, dokter: {} };
-                }
-                
-                monthlyData[monthYear].totalPasien += item.jumlah;
-                monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
-                monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
-            });
-            
-            excelData.push({});
-            excelData.push({
-                'No': 'LAPORAN BULANAN',
-                'Tanggal Pemeriksaan': '',
-                'Hari': '',
-                'Jenis Pemeriksaan': '',
-                'Jumlah Pasien': '',
-                'Dokter Penanggung Jawab': ''
-            });
-            
-            Object.keys(monthlyData).sort().forEach(monthYear => {
-                const [year, month] = monthYear.split('-');
-                const monthName = bulan[parseInt(month) - 1];
-                const stats = monthlyData[monthYear];
-                
-                excelData.push({});
-                excelData.push({
-                    'No': `${monthName} ${year}`,
-                    'Tanggal Pemeriksaan': '',
-                    'Hari': '',
-                    'Jenis Pemeriksaan': '',
-                    'Jumlah Pasien': '',
-                    'Dokter Penanggung Jawab': ''
-                });
-                
-                Object.keys(stats.jenis).sort().forEach(jenis => {
-                    const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
-                    excelData.push({
-                        'No': '',
-                        'Tanggal Pemeriksaan': jenis,
-                        'Hari': '',
-                        'Jenis Pemeriksaan': '',
-                        'Jumlah Pasien': stats.jenis[jenis],
-                        'Dokter Penanggung Jawab': `${persentase}%`
-                    });
-                });
-                
-                excelData.push({
-                    'No': '',
-                    'Tanggal Pemeriksaan': 'Total Pasien Bulan Ini',
-                    'Hari': '',
-                    'Jenis Pemeriksaan': '',
-                    'Jumlah Pasien': stats.totalPasien,
-                    'Dokter Penanggung Jawab': '100%'
-                });
-                
-                Object.keys(stats.dokter).sort().forEach(dokter => {
-                    const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
-                    excelData.push({});
-                    excelData.push({
-                        'No': '',
-                        'Tanggal Pemeriksaan': 'Ditandatangani oleh:',
-                        'Hari': dokter,
-                        'Jenis Pemeriksaan': '',
-                        'Jumlah Pasien': `${stats.dokter[dokter]} pasien`,
-                        'Dokter Penanggung Jawab': `${persentaseDokter}%`
-                    });
-                });
-            });
-            
-            const ws = XLSX.utils.json_to_sheet(excelData);
-            
-            ws['!cols'] = [
-                { wch: 5 },
-                { wch: 25 },
-                { wch: 12 },
-                { wch: 25 },
-                { wch: 15 },
-                { wch: 40 }
-            ];
-            
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Laporan Lab Andrologi');
-            
-            const today = new Date().toISOString().split('T')[0];
-            const filename = `Laporan_Lab_Andrologi_${today}.xlsx`;
-            
-            XLSX.writeFile(wb, filename);
-            showAlert('success', 'File Excel berhasil diunduh!');
-        }
-        
-        // Event listeners
-        document.getElementById('dokter').addEventListener('change', toggleDokterLainnya);
-        document.getElementById('btnAdd').addEventListener('click', tambahData);
-        document.getElementById('btnUpdate').addEventListener('click', updateData);
-        document.getElementById('btnCancel').addEventListener('click', batalEdit);
-        document.getElementById('btnExport').addEventListener('click', exportToExcel);
-        document.getElementById('btnClear').addEventListener('click', hapusSemua);
-    </script>
-</body>
-</html>
