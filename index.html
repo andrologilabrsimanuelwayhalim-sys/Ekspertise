@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Hasil Laboratorium Ekspertise</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏥</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
@@ -162,26 +163,22 @@
             display: flex;
             gap: 5px;
         }
-        .btn-edit {
-            background: #3b82f6;
-            color: white;
+        .btn-edit, .btn-delete {
             padding: 6px 12px;
             border-radius: 5px;
             font-size: 12px;
             cursor: pointer;
             border: none;
+            color: white;
+        }
+        .btn-edit {
+            background: #3b82f6;
         }
         .btn-edit:hover {
             background: #2563eb;
         }
         .btn-delete {
             background: #ef4444;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 12px;
-            cursor: pointer;
-            border: none;
         }
         .btn-delete:hover {
             background: #dc2626;
@@ -274,10 +271,6 @@
             font-size: 16px;
             margin-bottom: 5px;
         }
-        .signature-section .title {
-            color: #64748b;
-            font-size: 14px;
-        }
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -325,6 +318,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .status-online {
             background: #d1fae5;
@@ -347,6 +341,20 @@
             }
             .controls, .btn-group, .connection-status {
                 display: none;
+            }
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            .connection-status {
+                top: 10px;
+                right: 10px;
+                font-size: 10px;
+                padding: 8px 12px;
             }
         }
     </style>
@@ -454,34 +462,44 @@
         import { getDatabase, ref, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
         const firebaseConfig = {
-            apiKey: "AIzaSyCllhsdJzG8zCOcZR9DwzdavGrzTacJ68U",
-            authDomain: "ekspertise-d7f32.firebaseapp.com",
-            databaseURL: "https://ekspertise-d7f32-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "ekspertise-d7f32",
-            storageBucket: "ekspertise-d7f32.firebasestorage.app",
-            messagingSenderId: "1037422251720",
-            appId: "1:1037422251720:web:f21644c0c4f228ebe51ffd",
-            measurementId: "G-KE2YVRHKZS"
+            apiKey: "AIzaSyAx5behWUwxbJCiQxcJtp2hPDoeWHo6cmQ",
+            authDomain: "ekspertise-ab937.firebaseapp.com",
+            databaseURL: "https://ekspertise-ab937-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ekspertise-ab937",
+            storageBucket: "ekspertise-ab937.firebasestorage.app",
+            messagingSenderId: "37809695576",
+            appId: "1:37809695576:web:51565f7395c1b94c24532d"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const dataRef = ref(database, 'labData');
-
+        let app, database, dataRef;
         let dataArray = [];
         let editKey = null;
         const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         
-        document.getElementById('tanggal').valueAsDate = new Date();
+        try {
+            app = initializeApp(firebaseConfig);
+            database = getDatabase(app);
+            dataRef = ref(database, 'labData');
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            updateConnectionStatus('offline');
+            showAlert('error', 'Gagal menginisialisasi Firebase');
+        }
+        
+        const today = new Date();
+        const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+        document.getElementById('tanggal').value = localDate.toISOString().split('T')[0];
         
         function updateConnectionStatus(status) {
             const statusEl = document.getElementById('connectionStatus');
+            if (!statusEl) return;
+            
             statusEl.className = 'connection-status';
             
             if (status === 'online') {
                 statusEl.classList.add('status-online');
-                statusEl.innerHTML = '<span>✓</span> Terhubung ke Firebase';
+                statusEl.innerHTML = '<span>✓</span> Terhubung';
             } else if (status === 'offline') {
                 statusEl.classList.add('status-offline');
                 statusEl.innerHTML = '<span>✗</span> Tidak Terhubung';
@@ -491,56 +509,44 @@
             }
         }
 
-        onValue(dataRef, (snapshot) => {
-            dataArray = [];
-            
-            if (snapshot.exists()) {
-                const firebaseData = snapshot.val();
-                Object.keys(firebaseData).forEach(key => {
-                    dataArray.push({
-                        key: key,
-                        ...firebaseData[key]
-                    });
-                });
+        if (dataRef) {
+            onValue(dataRef, (snapshot) => {
+                dataArray = [];
                 
-                dataArray.sort((a, b) => {
-                    const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
-                    if (dateCompare !== 0) return dateCompare;
-                    return (a.timestamp || 0) - (b.timestamp || 0);
-                });
+                if (snapshot.exists()) {
+                    const firebaseData = snapshot.val();
+                    Object.keys(firebaseData).forEach(key => {
+                        dataArray.push({ key: key, ...firebaseData[key] });
+                    });
+                    
+                    dataArray.sort((a, b) => {
+                        const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
+                        if (dateCompare !== 0) return dateCompare;
+                        return (a.timestamp || 0) - (b.timestamp || 0);
+                    });
+                }
+                
                 updateConnectionStatus('online');
-            } else {
-                updateConnectionStatus('online');
-            }
-            
-            tampilkanData();
-        }, (error) => {
-            console.error('Firebase error:', error);
-            updateConnectionStatus('offline');
-            showAlert('error', 'Gagal terhubung ke Firebase: ' + error.message);
-        });
+                tampilkanData();
+            }, (error) => {
+                updateConnectionStatus('offline');
+                showAlert('error', 'Gagal terhubung ke Firebase');
+            });
+        }
         
         function showAlert(type, message) {
-            const alertSuccess = document.getElementById('alertSuccess');
-            const alertInfo = document.getElementById('alertInfo');
-            const alertError = document.getElementById('alertError');
+            const alerts = {
+                success: document.getElementById('alertSuccess'),
+                info: document.getElementById('alertInfo'),
+                error: document.getElementById('alertError')
+            };
             
-            alertSuccess.style.display = 'none';
-            alertInfo.style.display = 'none';
-            alertError.style.display = 'none';
+            Object.values(alerts).forEach(el => el && (el.style.display = 'none'));
             
-            if (type === 'success') {
-                document.getElementById('alertSuccessText').textContent = message;
-                alertSuccess.style.display = 'block';
-                setTimeout(() => alertSuccess.style.display = 'none', 3000);
-            } else if (type === 'info') {
-                document.getElementById('alertInfoText').textContent = message;
-                alertInfo.style.display = 'block';
-                setTimeout(() => alertInfo.style.display = 'none', 3000);
-            } else if (type === 'error') {
-                document.getElementById('alertErrorText').textContent = message;
-                alertError.style.display = 'block';
-                setTimeout(() => alertError.style.display = 'none', 5000);
+            if (alerts[type]) {
+                document.getElementById(`alert${type.charAt(0).toUpperCase() + type.slice(1)}Text`).textContent = message;
+                alerts[type].style.display = 'block';
+                setTimeout(() => alerts[type].style.display = 'none', type === 'error' ? 5000 : 3000);
             }
         }
         
@@ -588,12 +594,7 @@
             const namaHari = hari[date.getDay()];
             
             const newData = {
-                tanggal: tanggal,
-                hari: namaHari,
-                jenis: jenis,
-                jumlah: jumlah,
-                dokter: dokter,
-                timestamp: Date.now()
+                tanggal, hari: namaHari, jenis, jumlah, dokter, timestamp: Date.now()
             };
             
             try {
@@ -605,8 +606,7 @@
                 resetForm();
                 showAlert('success', 'Data berhasil ditambahkan!');
             } catch (error) {
-                console.error('Error adding data:', error);
-                showAlert('error', 'Gagal menambahkan data: ' + error.message);
+                showAlert('error', 'Gagal menambahkan data');
             } finally {
                 const btnAdd = document.getElementById('btnAdd');
                 btnAdd.disabled = false;
@@ -640,7 +640,7 @@
             document.getElementById('btnCancel').style.display = 'inline-block';
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            showAlert('info', 'Mode edit aktif. Ubah data dan klik Simpan Perubahan.');
+            showAlert('info', 'Mode edit aktif');
         }
         
         async function updateData() {
@@ -650,35 +650,20 @@
             const dokterSelect = document.getElementById('dokter').value;
             const dokterLainnya = document.getElementById('dokterLainnya').value;
             
-            if (!tanggal) {
-                showAlert('error', 'Silakan pilih tanggal pemeriksaan!');
+            if (!tanggal || isNaN(jumlah) || jumlah < 1) {
+                showAlert('error', 'Data tidak valid!');
                 return;
             }
             
-            if (isNaN(jumlah) || jumlah < 1) {
-                showAlert('error', 'Jumlah pasien harus minimal 1!');
+            let dokter = dokterSelect === 'Lainnya' ? dokterLainnya.trim() : dokterSelect;
+            if (!dokter) {
+                showAlert('error', 'Silakan masukkan nama dokter!');
                 return;
-            }
-            
-            let dokter = dokterSelect;
-            if (dokterSelect === 'Lainnya') {
-                if (!dokterLainnya.trim()) {
-                    showAlert('error', 'Silakan masukkan nama dokter!');
-                    return;
-                }
-                dokter = dokterLainnya.trim();
             }
             
             const date = new Date(tanggal + 'T00:00:00');
-            const namaHari = hari[date.getDay()];
-            
             const updatedData = {
-                tanggal: tanggal,
-                hari: namaHari,
-                jenis: jenis,
-                jumlah: jumlah,
-                dokter: dokter,
-                timestamp: Date.now()
+                tanggal, hari: hari[date.getDay()], jenis, jumlah, dokter, timestamp: Date.now()
             };
             
             try {
@@ -691,8 +676,7 @@
                 batalEdit();
                 showAlert('success', 'Data berhasil diperbarui!');
             } catch (error) {
-                console.error('Error updating data:', error);
-                showAlert('error', 'Gagal memperbarui data: ' + error.message);
+                showAlert('error', 'Gagal memperbarui data');
             } finally {
                 const btnUpdate = document.getElementById('btnUpdate');
                 btnUpdate.disabled = false;
@@ -709,7 +693,9 @@
         }
         
         function resetForm() {
-            document.getElementById('tanggal').valueAsDate = new Date();
+            const today = new Date();
+            const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+            document.getElementById('tanggal').value = localDate.toISOString().split('T')[0];
             document.getElementById('jenisPemeriksaan').selectedIndex = 0;
             document.getElementById('jumlah').value = 1;
             document.getElementById('dokter').selectedIndex = 0;
@@ -729,7 +715,7 @@
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            <p>Belum ada data pemeriksaan. Silakan tambahkan data untuk memulai.</p>
+                            <p>Belum ada data. Silakan tambahkan data untuk memulai.</p>
                         </td>
                     </tr>
                 `;
@@ -760,4 +746,290 @@
                     </td>
                 `;
                 
+                jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
+                totalPasien += item.jumlah;
+            });
+            
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    hapusData(this.getAttribute('data-key'));
+                });
+            });
+            
+            summaryDiv.innerHTML = `
+                <div class="summary-card">
+                    <h3>Total Pasien</h3>
+                    <div class="value">${totalPasien}</div>
+                </div>
+            `;
+            
+            Object.keys(jenisCount).sort().forEach(jenis => {
+                summaryDiv.innerHTML += `
+                    <div class="summary-card">
+                        <h3>${jenis}</h3>
+                        <div class="value">${jenisCount[jenis]}</div>
+                    </div>
+                `;
+            });
+            
+            summaryDiv.style.display = 'grid';
+            
+            const monthlyData = {};
+            dataArray.forEach(item => {
+                const date = new Date(item.tanggal + 'T00:00:00');
+                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 
+                if (!monthlyData[monthYear]) {
+                    monthlyData[monthYear] = { totalPasien: 0, jenis: {}, dokter: {} };
+                }
+                
+                monthlyData[monthYear].totalPasien += item.jumlah;
+                monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
+                monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
+            });
+            
+            const monthlyReportContainer = document.getElementById('monthlyReportContainer');
+            monthlyReportContainer.innerHTML = '';
+            
+            Object.keys(monthlyData).sort().reverse().forEach(monthYear => {
+                const [year, month] = monthYear.split('-');
+                const monthName = bulan[parseInt(month) - 1];
+                const stats = monthlyData[monthYear];
+                
+                let statsHTML = '<div class="stats-grid">';
+                statsHTML += `
+                    <div class="stat-item">
+                        <div class="label">Total Pasien</div>
+                        <div class="value">${stats.totalPasien}</div>
+                    </div>
+                `;
+                
+                Object.keys(stats.jenis).sort().forEach(jenis => {
+                    const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
+                    statsHTML += `
+                        <div class="stat-item">
+                            <div class="label">${jenis}</div>
+                            <div class="value">${stats.jenis[jenis]} (${persentase}%)</div>
+                        </div>
+                    `;
+                });
+                
+                statsHTML += '</div>';
+                
+                Object.keys(stats.dokter).sort().forEach(dokter => {
+                    const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
+                    const today = new Date();
+                    const todayStr = `${today.getDate()} ${bulan[today.getMonth()]} ${today.getFullYear()}`;
+                    
+                    statsHTML += `
+                        <div class="signature-section">
+                            <div class="date">${todayStr}</div>
+                            <div style="margin-bottom: 10px; color: #64748b;">Jumlah Pasien: <strong style="color: #2563eb;">${stats.dokter[dokter]}</strong> dari ${stats.totalPasien} pasien (<strong style="color: #2563eb;">${persentaseDokter}%</strong>)</div>
+                            <div style="margin: 50px 0 10px 0; font-style: italic; color: #94a3b8;">( tanda tangan )</div>
+                            <div class="name">${dokter}</div>
+                        </div>
+                    `;
+                });
+                
+                monthlyReportContainer.innerHTML += `
+                    <div class="month-card">
+                        <h3>📅 ${monthName} ${year}</h3>
+                        ${statsHTML}
+                    </div>
+                `;
+            });
+            
+            monthlyReportDiv.style.display = 'block';
+        }
+        
+        function formatTanggal(tanggal) {
+            const date = new Date(tanggal + 'T00:00:00');
+            const day = date.getDate();
+            const monthName = bulan[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day} ${monthName} ${year}`;
+        }
+        
+        async function hapusData(key) {
+            const item = dataArray.find(d => d.key === key);
+            if (!item) return;
+            
+            if (confirm(`Yakin ingin menghapus data ${item.jenis} tanggal ${formatTanggal(item.tanggal)}?`)) {
+                try {
+                    await remove(ref(database, 'labData/' + key));
+                    showAlert('success', 'Data berhasil dihapus!');
+                } catch (error) {
+                    showAlert('error', 'Gagal menghapus data');
+                }
+            }
+        }
+        
+        async function hapusSemua() {
+            if (dataArray.length === 0) {
+                showAlert('error', 'Tidak ada data untuk dihapus!');
+                return;
+            }
+            
+            if (confirm('Yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan!')) {
+                try {
+                    const btnClear = document.getElementById('btnClear');
+                    btnClear.disabled = true;
+                    btnClear.textContent = '⏳ Menghapus...';
+                    
+                    await remove(dataRef);
+                    batalEdit();
+                    showAlert('success', 'Semua data berhasil dihapus!');
+                } catch (error) {
+                    showAlert('error', 'Gagal menghapus data');
+                } finally {
+                    const btnClear = document.getElementById('btnClear');
+                    btnClear.disabled = false;
+                    btnClear.textContent = '🗑️ Hapus Semua';
+                }
+            }
+        }
+        
+        function exportToExcel() {
+            if (dataArray.length === 0) {
+                showAlert('error', 'Tidak ada data untuk diekspor!');
+                return;
+            }
+            
+            try {
+                const excelData = dataArray.map((item, index) => ({
+                    'No': index + 1,
+                    'Tanggal Pemeriksaan': formatTanggal(item.tanggal),
+                    'Hari': item.hari,
+                    'Jenis Pemeriksaan': item.jenis,
+                    'Jumlah Pasien': item.jumlah,
+                    'Dokter Penanggung Jawab': item.dokter
+                }));
+                
+                const jenisCount = {};
+                let totalPasien = 0;
+                
+                dataArray.forEach(item => {
+                    jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
+                    totalPasien += item.jumlah;
+                });
+                
+                excelData.push({});
+                excelData.push({ 'No': 'RINGKASAN KESELURUHAN' });
+                
+                Object.keys(jenisCount).sort().forEach(jenis => {
+                    const persentase = ((jenisCount[jenis] / totalPasien) * 100).toFixed(1);
+                    excelData.push({
+                        'No': '',
+                        'Tanggal Pemeriksaan': jenis,
+                        'Jumlah Pasien': jenisCount[jenis],
+                        'Dokter Penanggung Jawab': `${persentase}%`
+                    });
+                });
+                
+                excelData.push({
+                    'No': '',
+                    'Tanggal Pemeriksaan': 'TOTAL',
+                    'Jumlah Pasien': totalPasien,
+                    'Dokter Penanggung Jawab': '100%'
+                });
+                
+                const monthlyData = {};
+                dataArray.forEach(item => {
+                    const date = new Date(item.tanggal + 'T00:00:00');
+                    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!monthlyData[monthYear]) {
+                        monthlyData[monthYear] = { totalPasien: 0, jenis: {}, dokter: {} };
+                    }
+                    
+                    monthlyData[monthYear].totalPasien += item.jumlah;
+                    monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
+                    monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
+                });
+                
+                excelData.push({});
+                excelData.push({ 'No': 'LAPORAN BULANAN' });
+                
+                Object.keys(monthlyData).sort().forEach(monthYear => {
+                    const [year, month] = monthYear.split('-');
+                    const monthName = bulan[parseInt(month) - 1];
+                    const stats = monthlyData[monthYear];
+                    
+                    excelData.push({});
+                    excelData.push({ 'No': `${monthName} ${year}` });
+                    
+                    Object.keys(stats.jenis).sort().forEach(jenis => {
+                        const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
+                        excelData.push({
+                            'No': '',
+                            'Tanggal Pemeriksaan': jenis,
+                            'Jumlah Pasien': stats.jenis[jenis],
+                            'Dokter Penanggung Jawab': `${persentase}%`
+                        });
+                    });
+                    
+                    excelData.push({
+                        'No': '',
+                        'Tanggal Pemeriksaan': 'Total',
+                        'Jumlah Pasien': stats.totalPasien,
+                        'Dokter Penanggung Jawab': '100%'
+                    });
+                    
+                    Object.keys(stats.dokter).sort().forEach(dokter => {
+                        const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
+                        excelData.push({});
+                        excelData.push({
+                            'No': '',
+                            'Tanggal Pemeriksaan': 'Ditandatangani:',
+                            'Hari': dokter,
+                            'Jumlah Pasien': `${stats.dokter[dokter]} pasien`,
+                            'Dokter Penanggung Jawab': `${persentaseDokter}%`
+                        });
+                    });
+                });
+                
+                const ws = XLSX.utils.json_to_sheet(excelData);
+                ws['!cols'] = [
+                    { wch: 5 }, { wch: 25 }, { wch: 12 }, 
+                    { wch: 25 }, { wch: 15 }, { wch: 40 }
+                ];
+                
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Laporan Lab');
+                
+                const today = new Date();
+                const filename = `Laporan_Lab_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
+                
+                XLSX.writeFile(wb, filename);
+                showAlert('success', 'Excel berhasil diunduh!');
+            } catch (error) {
+                showAlert('error', 'Gagal mengekspor data');
+            }
+        }
+        
+        document.getElementById('dokter').addEventListener('change', toggleDokterLainnya);
+        document.getElementById('btnAdd').addEventListener('click', tambahData);
+        document.getElementById('btnUpdate').addEventListener('click', updateData);
+        document.getElementById('btnCancel').addEventListener('click', batalEdit);
+        document.getElementById('btnExport').addEventListener('click', exportToExcel);
+        document.getElementById('btnClear').addEventListener('click', hapusSemua);
+        
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (editKey) {
+                    updateData();
+                } else {
+                    tambahData();
+                }
+            }
+        });
+    </script>
+</body>
+</html>edit').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    editData(this.getAttribute('data-key'));
+                });
+            });
+            
+            document.querySelector
