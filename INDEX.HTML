@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Hasil Laboratorium Ekspertise</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 26px;
+            line-height: 1.4;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        #dokterLainnya {
+            margin-top: 10px;
+            display: none;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-add {
+            background: #10b981;
+            color: white;
+        }
+        .btn-add:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        .btn-update {
+            background: #f59e0b;
+            color: white;
+            display: none;
+        }
+        .btn-update:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+            display: none;
+        }
+        .btn-cancel:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+        .btn-export {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-export:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+        .btn-clear {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-clear:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 13px;
+        }
+        th {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover {
+            background: #eff6ff;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-edit:hover {
+            background: #2563eb;
+        }
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+        }
+        .summary-card h3 {
+            font-size: 12px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        .summary-card .value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .monthly-report {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        .monthly-report h2 {
+            color: #2563eb;
+            margin-bottom: 20px;
+            font-size: 20px;
+            text-align: center;
+        }
+        .month-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .month-card h3 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-align: center;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-item .label {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+        .stat-item .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .signature-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+        }
+        .signature-section .date {
+            color: #64748b;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        .signature-section .name {
+            font-weight: bold;
+            color: #1e293b;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .signature-section .title {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        .edit-mode {
+            background: #fef3c7 !important;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        @media print {
+            body {
+                background: white;
+            }
+            .controls, .btn-group {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Laporan Hasil Laboratorium Ekspertise<br>Dokter Spesialis Andrologi</h1>
+        <p class="subtitle">Sistem Pencatatan & Analisis Pemeriksaan Laboratorium</p>
+        
+        <div class="alert alert-success" id="alertSuccess">
+            <strong>✓ Berhasil!</strong> <span id="alertSuccessText"></span>
+        </div>
+        
+        <div class="alert alert-info" id="alertInfo">
+            <strong>ℹ Info:</strong> <span id="alertInfoText"></span>
+        </div>
+        
+        <div class="controls">
+            <div class="input-group">
+                <label>Tanggal Pemeriksaan</label>
+                <input type="date" id="tanggal" required>
+            </div>
+            <div class="input-group">
+                <label>Jenis Pemeriksaan</label>
+                <select id="jenisPemeriksaan">
+                    <option value="Alfa Glucosidase">Alfa Glucosidase</option>
+                    <option value="Analisa Aspermia">Analisa Aspermia</option>
+                    <option value="Analisa Sperma">Analisa Sperma</option>
+                    <option value="DNA Fragmentasi">DNA Fragmentasi</option>
+                    <option value="Fructose">Fructose</option>
+                    <option value="Preparasi Sperma">Preparasi Sperma</option>
+                    <option value="Sitrat">Sitrat</option>
+                    <option value="Urine Post Ejakulasi">Urine Post Ejakulasi</option>
+                    <option value="Zinc">Zinc</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Jumlah Pasien</label>
+                <input type="number" id="jumlah" min="1" value="1">
+            </div>
+            <div class="input-group">
+                <label>Dokter Penanggung Jawab</label>
+                <select id="dokter" onchange="toggleDokterLainnya()">
+                    <option value="dr. Ahmad Ricardo Syukur Silalahi, Sp.And">dr. Ahmad Ricardo Syukur Silalahi, Sp.And</option>
+                    <option value="Lainnya">Lainnya (sebutkan)</option>
+                </select>
+                <input type="text" id="dokterLainnya" placeholder="Masukkan nama dokter lainnya">
+            </div>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn-add" id="btnAdd" onclick="tambahData()">➕ Tambah Data</button>
+            <button class="btn-update" id="btnUpdate" onclick="updateData()">💾 Simpan Perubahan</button>
+            <button class="btn-cancel" id="btnCancel" onclick="batalEdit()">❌ Batal</button>
+            <button class="btn-export" onclick="exportToExcel()">📥 Export ke Excel</button>
+            <button class="btn-clear" onclick="hapusSemua()">🗑️ Hapus Semua</button>
+        </div>
+        
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Tanggal Pemeriksaan</th>
+                        <th>Hari</th>
+                        <th>Jenis Pemeriksaan</th>
+                        <th>Jumlah Pasien</th>
+                        <th>Dokter Penanggung Jawab</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p>Belum ada data pemeriksaan. Silakan tambahkan data untuk memulai.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="summary" id="summary" style="display: none;"></div>
+        
+        <div class="monthly-report" id="monthlyReport" style="display: none;">
+            <h2>📊 Laporan Bulanan Berdasarkan Jumlah Pasien</h2>
+            <div id="monthlyReportContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let data = [];
+        let editIndex = -1;
+        const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        
+        // Set tanggal hari ini
+        document.getElementById('tanggal').valueAsDate = new Date();
+        
+        // Load data dari localStorage jika ada
+        window.addEventListener('load', function() {
+            const savedData = localStorage.getItem('labData');
+            if (savedData) {
+                data = JSON.parse(savedData);
+                tampilkanData();
+                showAlert('info', 'Data sebelumnya berhasil dimuat.');
+            }
+        });
+        
+        function saveToLocalStorage() {
+            localStorage.setItem('labData', JSON.stringify(data));
+        }
+        
+        function showAlert(type, message) {
+            const alertSuccess = document.getElementById('alertSuccess');
+            const alertInfo = document.getElementById('alertInfo');
+            
+            if (type === 'success') {
+                document.getElementById('alertSuccessText').textContent = message;
+                alertSuccess.style.display = 'block';
+                setTimeout(() => alertSuccess.style.display = 'none', 3000);
+            } else if (type === 'info') {
+                document.getElementById('alertInfoText').textContent = message;
+                alertInfo.style.display = 'block';
+                setTimeout(() => alertInfo.style.display = 'none', 3000);
+            }
+        }
+        
+        function toggleDokterLainnya() {
+            const dokterSelect = document.getElementById('dokter');
+            const dokterLainnya = document.getElementById('dokterLainnya');
+            
+            if (dokterSelect.value === 'Lainnya') {
+                dokterLainnya.style.display = 'block';
+                dokterLainnya.required = true;
+            } else {
+                dokterLainnya.style.display = 'none';
+                dokterLainnya.required = false;
+                dokterLainnya.value = '';
+            }
+        }
+        
+        function tambahData() {
+            const tanggal = document.getElementById('tanggal').value;
+            const jenis = document.getElementById('jenisPemeriksaan').value;
+            const jumlah = parseInt(document.getElementById('jumlah').value);
+            const dokterSelect = document.getElementById('dokter').value;
+            const dokterLainnya = document.getElementById('dokterLainnya').value;
+            
+            if (!tanggal) {
+                alert('Silakan pilih tanggal pemeriksaan!');
+                return;
+            }
+            
+            if (jumlah < 1) {
+                alert('Jumlah pasien harus minimal 1!');
+                return;
+            }
+            
+            let dokter = dokterSelect;
+            if (dokterSelect === 'Lainnya') {
+                if (!dokterLainnya.trim()) {
+                    alert('Silakan masukkan nama dokter!');
+                    return;
+                }
+                dokter = dokterLainnya.trim();
+            }
+            
+            const date = new Date(tanggal + 'T00:00:00');
+            const namaHari = hari[date.getDay()];
+            
+            data.push({
+                tanggal: tanggal,
+                hari: namaHari,
+                jenis: jenis,
+                jumlah: jumlah,
+                dokter: dokter
+            });
+            
+            data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+            
+            saveToLocalStorage();
+            resetForm();
+            tampilkanData();
+            showAlert('success', 'Data berhasil ditambahkan!');
+        }
+        
+        function editData(index) {
+            editIndex = index;
+            const item = data[index];
+            
+            document.getElementById('tanggal').value = item.tanggal;
+            document.getElementById('jenisPemeriksaan').value = item.jenis;
+            document.getElementById('jumlah').value = item.jumlah;
+            
+            // Check if dokter is the default one or lainnya
+            if (item.dokter === 'dr. Ahmad Ricardo Syukur Silalahi, Sp.And') {
+                document.getElementById('dokter').value = item.dokter;
+            } else {
+                document.getElementById('dokter').value = 'Lainnya';
+                document.getElementById('dokterLainnya').value = item.dokter;
+                toggleDokterLainnya();
+            }
+            
+            // Toggle button visibility
+            document.getElementById('btnAdd').style.display = 'none';
+            document.getElementById('btnUpdate').style.display = 'inline-block';
+            document.getElementById('btnCancel').style.display = 'inline-block';
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            showAlert('info', 'Mode edit aktif. Ubah data dan klik Simpan Perubahan.');
+        }
+        
+        function updateData() {
+            const tanggal = document.getElementById('tanggal').value;
+            const jenis = document.getElementById('jenisPemeriksaan').value;
+            const jumlah = parseInt(document.getElementById('jumlah').value);
+            const dokterSelect = document.getElementById('dokter').value;
+            const dokterLainnya = document.getElementById('dokterLainnya').value;
+            
+            if (!tanggal) {
+                alert('Silakan pilih tanggal pemeriksaan!');
+                return;
+            }
+            
+            if (jumlah < 1) {
+                alert('Jumlah pasien harus minimal 1!');
+                return;
+            }
+            
+            let dokter = dokterSelect;
+            if (dokterSelect === 'Lainnya') {
+                if (!dokterLainnya.trim()) {
+                    alert('Silakan masukkan nama dokter!');
+                    return;
+                }
+                dokter = dokterLainnya.trim();
+            }
+            
+            const date = new Date(tanggal + 'T00:00:00');
+            const namaHari = hari[date.getDay()];
+            
+            data[editIndex] = {
+                tanggal: tanggal,
+                hari: namaHari,
+                jenis: jenis,
+                jumlah: jumlah,
+                dokter: dokter
+            };
+            
+            data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+            
+            saveToLocalStorage();
+            resetForm();
+            batalEdit();
+            tampilkanData();
+            showAlert('success', 'Data berhasil diperbarui!');
+        }
+        
+        function batalEdit() {
+            editIndex = -1;
+            document.getElementById('btnAdd').style.display = 'inline-block';
+            document.getElementById('btnUpdate').style.display = 'none';
+            document.getElementById('btnCancel').style.display = 'none';
+            resetForm();
+        }
+        
+        function resetForm() {
+            document.getElementById('tanggal').valueAsDate = new Date();
+            document.getElementById('jenisPemeriksaan').selectedIndex = 0;
+            document.getElementById('jumlah').value = 1;
+            document.getElementById('dokter').selectedIndex = 0;
+            document.getElementById('dokterLainnya').value = '';
+            toggleDokterLainnya();
+        }
+        
+        function tampilkanData() {
+            const tbody = document.getElementById('tableBody');
+            const summaryDiv = document.getElementById('summary');
+            const monthlyReportDiv = document.getElementById('monthlyReport');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p>Belum ada data pemeriksaan. Silakan tambahkan data untuk memulai.</p>
+                        </td>
+                    </tr>
+                `;
+                summaryDiv.style.display = 'none';
+                monthlyReportDiv.style.display = 'none';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            const jenisCount = {};
+            let totalPasien = 0;
+            
+            data.forEach((item, index) => {
+                const row = tbody.insertRow();
+                row.className = editIndex === index ? 'edit-mode' : '';
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${formatTanggal(item.tanggal)}</td>
+                    <td>${item.hari}</td>
+                    <td>${item.jenis}</td>
+                    <td>${item.jumlah}</td>
+                    <td>${item.dokter}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-edit" onclick="editData(${index})">✏️ Edit</button>
+                            <button class="btn-delete" onclick="hapusData(${index})">🗑️ Hapus</button>
+                        </div>
+                    </td>
+                `;
+                
+                jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
+                totalPasien += item.jumlah;
+            });
+            
+            // Tampilkan summary
+            summaryDiv.innerHTML = `
+                <div class="summary-card">
+                    <h3>Total Pasien</h3>
+                    <div class="value">${totalPasien}</div>
+                </div>
+            `;
+            
+            Object.keys(jenisCount).sort().forEach(jenis => {
+                summaryDiv.innerHTML += `
+                    <div class="summary-card">
+                        <h3>${jenis}</h3>
+                        <div class="value">${jenisCount[jenis]}</div>
+                    </div>
+                `;
+            });
+            
+            summaryDiv.style.display = 'grid';
+            
+            // Buat laporan bulanan
+            const monthlyData = {};
+            data.forEach(item => {
+                const date = new Date(item.tanggal + 'T00:00:00');
+                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!monthlyData[monthYear]) {
+                    monthlyData[monthYear] = {
+                        totalPasien: 0,
+                        jenis: {},
+                        dokter: {}
+                    };
+                }
+                
+                monthlyData[monthYear].totalPasien += item.jumlah;
+                monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
+                monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
+            });
+            
+            // Tampilkan laporan bulanan
+            const monthlyReportContainer = document.getElementById('monthlyReportContainer');
+            monthlyReportContainer.innerHTML = '';
+            
+            Object.keys(monthlyData).sort().reverse().forEach(monthYear => {
+                const [year, month] = monthYear.split('-');
+                const monthName = bulan[parseInt(month) - 1];
+                const stats = monthlyData[monthYear];
+                
+                let statsHTML = '<div class="stats-grid">';
+                statsHTML += `
+                    <div class="stat-item">
+                        <div class="label">Total Pasien</div>
+                        <div class="value">${stats.totalPasien}</div>
+                    </div>
+                `;
+                
+                Object.keys(stats.jenis).sort().forEach(jenis => {
+                    const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
+                    statsHTML += `
+                        <div class="stat-item">
+                            <div class="label">${jenis}</div>
+                            <div class="value">${stats.jenis[jenis]} (${persentase}%)</div>
+                        </div>
+                    `;
+                });
+                
+                statsHTML += '</div>';
+                
+                // Tampilkan per dokter
+                Object.keys(stats.dokter).sort().forEach(dokter => {
+                    const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
+                    
+                    const today = new Date();
+                    const todayStr = `${today.getDate()} ${bulan[today.getMonth()]} ${today.getFullYear()}`;
+                    
+                    statsHTML += `
+                        <div class="signature-section">
+                            <div class="date">${todayStr}</div>
+                            <div style="margin-bottom: 10px; color: #64748b;">Jumlah Pasien: <strong style="color: #2563eb;">${stats.dokter[dokter]}</strong> dari ${stats.totalPasien} pasien (<strong style="color: #2563eb;">${persentaseDokter}%</strong>)</div>
+                            <div style="margin: 50px 0 10px 0; font-style: italic; color: #94a3b8;">( tanda tangan )</div>
+                            <div class="name">${dokter}</div>
+                        </div>
+                    `;
+                });
+                
+                monthlyReportContainer.innerHTML += `
+                    <div class="month-card">
+                        <h3>📅 ${monthName} ${year}</h3>
+                        ${statsHTML}
+                    </div>
+                `;
+            });
+            
+            monthlyReportDiv.style.display = 'block';
+        }
+        
+        function formatTanggal(tanggal) {
+            const date = new Date(tanggal + 'T00:00:00');
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('id-ID', options);
+        }
+        
+        function hapusData(index) {
+            if (confirm('Yakin ingin menghapus data ini?')) {
+                data.splice(index, 1);
+                saveToLocalStorage();
+                tampilkanData();
+                showAlert('success', 'Data berhasil dihapus!');
+            }
+        }
+        
+        function hapusSemua() {
+            if (data.length === 0) {
+                alert('Tidak ada data untuk dihapus!');
+                return;
+            }
+            
+            if (confirm('Yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan!')) {
+                data = [];
+                localStorage.removeItem('labData');
+                batalEdit();
+                tampilkanData();
+                showAlert('success', 'Semua data berhasil dihapus!');
+            }
+        }
+        
+        function exportToExcel() {
+            if (data.length === 0) {
+                alert('Tidak ada data untuk diekspor!');
+                return;
+            }
+            
+            const excelData = data.map((item, index) => ({
+                'No': index + 1,
+                'Tanggal Pemeriksaan': formatTanggal(item.tanggal),
+                'Hari': item.hari,
+                'Jenis Pemeriksaan': item.jenis,
+                'Jumlah Pasien': item.jumlah,
+                'Dokter Penanggung Jawab': item.dokter
+            }));
+            
+            // Hitung statistik
+            const jenisCount = {};
+            let totalPasien = 0;
+            
+            data.forEach(item => {
+                jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
+                totalPasien += item.jumlah;
+            });
+            
+            // Tambahkan ringkasan
+            excelData.push({});
+            excelData.push({
+                'No': 'RINGKASAN KESELURUHAN',
+                'Tanggal Pemeriksaan': '',
+                'Hari': '',
+                'Jenis Pemeriksaan': '',
+                'Jumlah Pasien': '',
+                'Dokter Penanggung Jawab': ''
+            });
+            
+            Object.keys(jenisCount).sort().forEach(jenis => {
+                const persentase = ((jenisCount[jenis] / totalPasien) * 100).toFixed(1);
+                excelData.push({
+                    'No': '',
+                    'Tanggal Pemeriksaan': jenis,
+                    'Hari': '',
+                    'Jenis Pemeriksaan': '',
+                    'Jumlah Pasien': jenisCount[jenis],
+                    'Dokter Penanggung Jawab': `${persentase}%`
+                });
+            });
+            
+            excelData.push({
+                'No': '',
+                'Tanggal Pemeriksaan': 'TOTAL KESELURUHAN',
+                'Hari': '',
+                'Jenis Pemeriksaan': '',
+                'Jumlah Pasien': totalPasien,
+                'Dokter Penanggung Jawab': '100%'
+            });
+            
+            // Laporan bulanan
+            const monthlyData = {};
+            data.forEach(item => {
+                const date = new Date(item.tanggal + 'T00:00:00');
+                const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!monthlyData[monthYear]) {
+                    monthlyData[monthYear] = { totalPasien: 0, jenis: {}, dokter: {} };
+                }
+                
+                monthlyData[monthYear].totalPasien += item.jumlah;
+                monthlyData[monthYear].jenis[item.jenis] = (monthlyData[monthYear].jenis[item.jenis] || 0) + item.jumlah;
+                monthlyData[monthYear].dokter[item.dokter] = (monthlyData[monthYear].dokter[item.dokter] || 0) + item.jumlah;
+            });
+            
+            excelData.push({});
+            excelData.push({
+                'No': 'LAPORAN BULANAN',
+                'Tanggal Pemeriksaan': '',
+                'Hari': '',
+                'Jenis Pemeriksaan': '',
+                'Jumlah Pasien': '',
+                'Dokter Penanggung Jawab': ''
+            });
+            
+            Object.keys(monthlyData).sort().forEach(monthYear => {
+                const [year, month] = monthYear.split('-');
+                const monthName = bulan[parseInt(month) - 1];
+                const stats = monthlyData[monthYear];
+                
+                excelData.push({});
+                excelData.push({
+                    'No': `${monthName} ${year}`,
+                    'Tanggal Pemeriksaan': '',
+                    'Hari': '',
+                    'Jenis Pemeriksaan': '',
+                    'Jumlah Pasien': '',
+                    'Dokter Penanggung Jawab': ''
+                });
+                
+                Object.keys(stats.jenis).sort().forEach(jenis => {
+                    const persentase = ((stats.jenis[jenis] / stats.totalPasien) * 100).toFixed(1);
+                    excelData.push({
+                        'No': '',
+                        'Tanggal Pemeriksaan': jenis,
+                        'Hari': '',
+                        'Jenis Pemeriksaan': '',
+                        'Jumlah Pasien': stats.jenis[jenis],
+                        'Dokter Penanggung Jawab': `${persentase}%`
+                    });
+                });
+                
+                excelData.push({
+                    'No': '',
+                    'Tanggal Pemeriksaan': 'Total Pasien Bulan Ini',
+                    'Hari': '',
+                    'Jenis Pemeriksaan': '',
+                    'Jumlah Pasien': stats.totalPasien,
+                    'Dokter Penanggung Jawab': '100%'
+                });
+                
+                // Tanda tangan per dokter
+                Object.keys(stats.dokter).sort().forEach(dokter => {
+                    const persentaseDokter = ((stats.dokter[dokter] / stats.totalPasien) * 100).toFixed(1);
+                    excelData.push({});
+                    excelData.push({
+                        'No': '',
+                        'Tanggal Pemeriksaan': 'Ditandatangani oleh:',
+                        'Hari': dokter,
+                        'Jenis Pemeriksaan': '',
+                        'Jumlah Pasien': `${stats.dokter[dokter]} pasien`,
+                        'Dokter Penanggung Jawab': `${persentaseDokter}%`
+                    });
+                });
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 5 },  // No
+                { wch: 25 }, // Tanggal Pemeriksaan
+                { wch: 12 }, // Hari
+                { wch: 25 }, // Jenis Pemeriksaan
+                { wch: 15 }, // Jumlah Pasien
+                { wch: 40 }  // Dokter Penanggung Jawab
+            ];
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Laporan Lab Andrologi');
+            
+            const today = new Date().toISOString().split('T')[0];
+            const filename = `Laporan_Lab_Andrologi_${today}.xlsx`;
+            
+            XLSX.writeFile(wb, filename);
+            showAlert('success', 'File Excel berhasil diunduh!');
+        }
+    </script>
+</body>
+</html>
