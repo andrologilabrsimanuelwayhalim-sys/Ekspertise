@@ -452,21 +452,19 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
 
         const firebaseConfig = {
-            apiKey: "AIzaSyAx5behWUwxbJCiQxcJtp2hPDoeWHo6cmQ",
-            authDomain: "ekspertise-ab937.firebaseapp.com",
-            databaseURL: "https://ekspertise-ab937-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "ekspertise-ab937",
-            storageBucket: "ekspertise-ab937.firebasestorage.app",
-            messagingSenderId: "37809695576",
-            appId: "1:37809695576:web:51565f7395c1b94c24532d",
-            measurementId: "G-07X10TERMV"
+            apiKey: "AIzaSyCllhsdJzG8zCOcZR9DwzdavGrzTacJ68U",
+            authDomain: "ekspertise-d7f32.firebaseapp.com",
+            databaseURL: "https://ekspertise-d7f32-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ekspertise-d7f32",
+            storageBucket: "ekspertise-d7f32.firebasestorage.app",
+            messagingSenderId: "1037422251720",
+            appId: "1:1037422251720:web:f21644c0c4f228ebe51ffd",
+            measurementId: "G-KE2YVRHKZS"
         };
 
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const database = getDatabase(app);
         const dataRef = ref(database, 'labData');
 
@@ -760,4 +758,6 @@
                             <button class="btn-delete" data-key="${item.key}">🗑️ Hapus</button>
                         </div>
                     </td>
+                `;
+                
                 
