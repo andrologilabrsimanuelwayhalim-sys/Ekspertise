@@ -397,7 +397,7 @@
             </div>
             <div class="input-group">
                 <label>Dokter Penanggung Jawab</label>
-                <select id="dokter" onchange="toggleDokterLainnya()">
+                <select id="dokter">
                     <option value="dr. Ahmad Ricardo Syukur Silalahi, Sp.And">dr. Ahmad Ricardo Syukur Silalahi, Sp.And</option>
                     <option value="Lainnya">Lainnya (sebutkan)</option>
                 </select>
@@ -406,11 +406,11 @@
         </div>
         
         <div class="btn-group">
-            <button class="btn-add" id="btnAdd" onclick="tambahData()">➕ Tambah Data</button>
-            <button class="btn-update" id="btnUpdate" onclick="updateData()">💾 Simpan Perubahan</button>
-            <button class="btn-cancel" id="btnCancel" onclick="batalEdit()">✖ Batal</button>
-            <button class="btn-export" onclick="exportToExcel()">📥 Export ke Excel</button>
-            <button class="btn-clear" onclick="hapusSemua()">🗑️ Hapus Semua</button>
+            <button class="btn-add" id="btnAdd">➕ Tambah Data</button>
+            <button class="btn-update" id="btnUpdate">💾 Simpan Perubahan</button>
+            <button class="btn-cancel" id="btnCancel">✖ Batal</button>
+            <button class="btn-export" id="btnExport">📥 Export ke Excel</button>
+            <button class="btn-clear" id="btnClear">🗑️ Hapus Semua</button>
         </div>
         
         <div class="table-container">
@@ -449,9 +449,8 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, onValue, set, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
-        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAx5behWUwxbJCiQxcJtp2hPDoeWHo6cmQ",
             authDomain: "ekspertise-ab937.firebaseapp.com",
@@ -463,22 +462,18 @@
             measurementId: "G-07X10TERMV"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const dataRef = ref(database, 'labData');
 
-        let data = [];
-        let dataKeys = {};
-        let editIndex = -1;
+        // PERBAIKAN: Gunakan array untuk menyimpan data dengan key Firebase yang benar
+        let dataArray = [];
         let editKey = null;
         const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         
-        // Set tanggal hari ini
         document.getElementById('tanggal').valueAsDate = new Date();
         
-        // Update connection status
         function updateConnectionStatus(status) {
             const statusEl = document.getElementById('connectionStatus');
             statusEl.className = 'connection-status';
@@ -495,32 +490,38 @@
             }
         }
 
-        // Listen to data changes from Firebase
+        // PERBAIKAN: Simpan data dengan key yang benar
         onValue(dataRef, (snapshot) => {
-            data = [];
-            dataKeys = {};
+            dataArray = [];
             
             if (snapshot.exists()) {
                 const firebaseData = snapshot.val();
                 Object.keys(firebaseData).forEach(key => {
-                    data.push(firebaseData[key]);
-                    dataKeys[data.length - 1] = key;
+                    dataArray.push({
+                        key: key,
+                        ...firebaseData[key]
+                    });
                 });
                 
-                data.sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+                // Sort berdasarkan tanggal dan timestamp
+                dataArray.sort((a, b) => {
+                    const dateCompare = new Date(a.tanggal) - new Date(b.tanggal);
+                    if (dateCompare !== 0) return dateCompare;
+                    return (a.timestamp || 0) - (b.timestamp || 0);
+                });
                 updateConnectionStatus('online');
             } else {
                 updateConnectionStatus('online');
             }
             
-            window.tampilkanData();
+            tampilkanData();
         }, (error) => {
             console.error('Firebase error:', error);
             updateConnectionStatus('offline');
-            window.showAlert('error', 'Gagal terhubung ke Firebase: ' + error.message);
+            showAlert('error', 'Gagal terhubung ke Firebase: ' + error.message);
         });
         
-        window.showAlert = function(type, message) {
+        function showAlert(type, message) {
             const alertSuccess = document.getElementById('alertSuccess');
             const alertInfo = document.getElementById('alertInfo');
             const alertError = document.getElementById('alertError');
@@ -544,7 +545,7 @@
             }
         }
         
-        window.toggleDokterLainnya = function() {
+        function toggleDokterLainnya() {
             const dokterSelect = document.getElementById('dokter');
             const dokterLainnya = document.getElementById('dokterLainnya');
             
@@ -558,7 +559,7 @@
             }
         }
         
-        window.tambahData = async function() {
+        async function tambahData() {
             const tanggal = document.getElementById('tanggal').value;
             const jenis = document.getElementById('jenisPemeriksaan').value;
             const jumlah = parseInt(document.getElementById('jumlah').value);
@@ -566,19 +567,19 @@
             const dokterLainnya = document.getElementById('dokterLainnya').value;
             
             if (!tanggal) {
-                alert('Silakan pilih tanggal pemeriksaan!');
+                showAlert('error', 'Silakan pilih tanggal pemeriksaan!');
                 return;
             }
             
-            if (jumlah < 1) {
-                alert('Jumlah pasien harus minimal 1!');
+            if (isNaN(jumlah) || jumlah < 1) {
+                showAlert('error', 'Jumlah pasien harus minimal 1!');
                 return;
             }
             
             let dokter = dokterSelect;
             if (dokterSelect === 'Lainnya') {
                 if (!dokterLainnya.trim()) {
-                    alert('Silakan masukkan nama dokter!');
+                    showAlert('error', 'Silakan masukkan nama dokter!');
                     return;
                 }
                 dokter = dokterLainnya.trim();
@@ -587,6 +588,7 @@
             const date = new Date(tanggal + 'T00:00:00');
             const namaHari = hari[date.getDay()];
             
+            // PERBAIKAN: Simpan data dengan struktur yang benar
             const newData = {
                 tanggal: tanggal,
                 hari: namaHari,
@@ -596,17 +598,19 @@
                 timestamp: Date.now()
             };
             
+            console.log('Data yang akan disimpan:', newData);
+            
             try {
                 const btnAdd = document.getElementById('btnAdd');
                 btnAdd.disabled = true;
                 btnAdd.textContent = '⏳ Menyimpan...';
                 
                 await push(dataRef, newData);
-                window.resetForm();
-                window.showAlert('success', 'Data berhasil ditambahkan ke Firebase!');
+                resetForm();
+                showAlert('success', 'Data berhasil ditambahkan!');
             } catch (error) {
                 console.error('Error adding data:', error);
-                window.showAlert('error', 'Gagal menambahkan data: ' + error.message);
+                showAlert('error', 'Gagal menambahkan data: ' + error.message);
             } finally {
                 const btnAdd = document.getElementById('btnAdd');
                 btnAdd.disabled = false;
@@ -614,10 +618,12 @@
             }
         }
         
-        window.editData = function(index) {
-            editIndex = index;
-            editKey = dataKeys[index];
-            const item = data[index];
+        // PERBAIKAN: Gunakan key Firebase yang benar
+        function editData(key) {
+            const item = dataArray.find(d => d.key === key);
+            if (!item) return;
+            
+            editKey = key;
             
             document.getElementById('tanggal').value = item.tanggal;
             document.getElementById('jenisPemeriksaan').value = item.jenis;
@@ -628,18 +634,18 @@
             } else {
                 document.getElementById('dokter').value = 'Lainnya';
                 document.getElementById('dokterLainnya').value = item.dokter;
-                window.toggleDokterLainnya();
             }
+            toggleDokterLainnya();
             
             document.getElementById('btnAdd').style.display = 'none';
             document.getElementById('btnUpdate').style.display = 'inline-block';
             document.getElementById('btnCancel').style.display = 'inline-block';
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            window.showAlert('info', 'Mode edit aktif. Ubah data dan klik Simpan Perubahan.');
+            showAlert('info', 'Mode edit aktif. Ubah data dan klik Simpan Perubahan.');
         }
         
-        window.updateData = async function() {
+        async function updateData() {
             const tanggal = document.getElementById('tanggal').value;
             const jenis = document.getElementById('jenisPemeriksaan').value;
             const jumlah = parseInt(document.getElementById('jumlah').value);
@@ -647,19 +653,19 @@
             const dokterLainnya = document.getElementById('dokterLainnya').value;
             
             if (!tanggal) {
-                alert('Silakan pilih tanggal pemeriksaan!');
+                showAlert('error', 'Silakan pilih tanggal pemeriksaan!');
                 return;
             }
             
-            if (jumlah < 1) {
-                alert('Jumlah pasien harus minimal 1!');
+            if (isNaN(jumlah) || jumlah < 1) {
+                showAlert('error', 'Jumlah pasien harus minimal 1!');
                 return;
             }
             
             let dokter = dokterSelect;
             if (dokterSelect === 'Lainnya') {
                 if (!dokterLainnya.trim()) {
-                    alert('Silakan masukkan nama dokter!');
+                    showAlert('error', 'Silakan masukkan nama dokter!');
                     return;
                 }
                 dokter = dokterLainnya.trim();
@@ -683,12 +689,12 @@
                 btnUpdate.textContent = '⏳ Menyimpan...';
                 
                 await update(ref(database, 'labData/' + editKey), updatedData);
-                window.resetForm();
-                window.batalEdit();
-                window.showAlert('success', 'Data berhasil diperbarui!');
+                resetForm();
+                batalEdit();
+                showAlert('success', 'Data berhasil diperbarui!');
             } catch (error) {
                 console.error('Error updating data:', error);
-                window.showAlert('error', 'Gagal memperbarui data: ' + error.message);
+                showAlert('error', 'Gagal memperbarui data: ' + error.message);
             } finally {
                 const btnUpdate = document.getElementById('btnUpdate');
                 btnUpdate.disabled = false;
@@ -696,30 +702,29 @@
             }
         }
         
-        window.batalEdit = function() {
-            editIndex = -1;
+        function batalEdit() {
             editKey = null;
             document.getElementById('btnAdd').style.display = 'inline-block';
             document.getElementById('btnUpdate').style.display = 'none';
             document.getElementById('btnCancel').style.display = 'none';
-            window.resetForm();
+            resetForm();
         }
         
-        window.resetForm = function() {
+        function resetForm() {
             document.getElementById('tanggal').valueAsDate = new Date();
             document.getElementById('jenisPemeriksaan').selectedIndex = 0;
             document.getElementById('jumlah').value = 1;
             document.getElementById('dokter').selectedIndex = 0;
             document.getElementById('dokterLainnya').value = '';
-            window.toggleDokterLainnya();
+            toggleDokterLainnya();
         }
         
-        window.tampilkanData = function() {
+        function tampilkanData() {
             const tbody = document.getElementById('tableBody');
             const summaryDiv = document.getElementById('summary');
             const monthlyReportDiv = document.getElementById('monthlyReport');
             
-            if (data.length === 0) {
+            if (dataArray.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="7" class="empty-state">
@@ -739,9 +744,10 @@
             const jenisCount = {};
             let totalPasien = 0;
             
-            data.forEach((item, index) => {
+            // PERBAIKAN: Gunakan key yang benar untuk setiap row
+            dataArray.forEach((item, index) => {
                 const row = tbody.insertRow();
-                row.className = editIndex === index ? 'edit-mode' : '';
+                row.className = editKey === item.key ? 'edit-mode' : '';
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${formatTanggal(item.tanggal)}</td>
@@ -751,14 +757,29 @@
                     <td>${item.dokter}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-edit" onclick="editData(${index})">✏️ Edit</button>
-                            <button class="btn-delete" onclick="hapusData(${index})">🗑️ Hapus</button>
+                            <button class="btn-edit" data-key="${item.key}">✏️ Edit</button>
+                            <button class="btn-delete" data-key="${item.key}">🗑️ Hapus</button>
                         </div>
                     </td>
                 `;
                 
                 jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
                 totalPasien += item.jumlah;
+            });
+            
+            // Add event listeners untuk button edit dan delete
+            document.querySelectorAll('.btn-edit').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    editData(key);
+                });
+            });
+            
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.getAttribute('data-key');
+                    hapusData(key);
+                });
             });
             
             summaryDiv.innerHTML = `
@@ -781,7 +802,7 @@
             
             // Buat laporan bulanan
             const monthlyData = {};
-            data.forEach(item => {
+            dataArray.forEach(item => {
                 const date = new Date(item.tanggal + 'T00:00:00');
                 const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 
@@ -859,52 +880,55 @@
             return date.toLocaleDateString('id-ID', options);
         }
         
-        window.hapusData = async function(index) {
-            if (confirm('Yakin ingin menghapus data ini?')) {
+        // PERBAIKAN: Gunakan key Firebase yang benar untuk hapus
+        async function hapusData(key) {
+            const item = dataArray.find(d => d.key === key);
+            if (!item) return;
+            
+            if (confirm(`Yakin ingin menghapus data ${item.jenis} tanggal ${formatTanggal(item.tanggal)}?`)) {
                 try {
-                    const key = dataKeys[index];
                     await remove(ref(database, 'labData/' + key));
-                    window.showAlert('success', 'Data berhasil dihapus!');
+                    showAlert('success', 'Data berhasil dihapus!');
                 } catch (error) {
                     console.error('Error deleting data:', error);
-                    window.showAlert('error', 'Gagal menghapus data: ' + error.message);
+                    showAlert('error', 'Gagal menghapus data: ' + error.message);
                 }
             }
         }
         
-        window.hapusSemua = async function() {
-            if (data.length === 0) {
-                alert('Tidak ada data untuk dihapus!');
+        async function hapusSemua() {
+            if (dataArray.length === 0) {
+                showAlert('error', 'Tidak ada data untuk dihapus!');
                 return;
             }
             
             if (confirm('Yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan!')) {
                 try {
-                    const btnClear = document.querySelector('.btn-clear');
+                    const btnClear = document.getElementById('btnClear');
                     btnClear.disabled = true;
                     btnClear.textContent = '⏳ Menghapus...';
                     
                     await remove(dataRef);
-                    window.batalEdit();
-                    window.showAlert('success', 'Semua data berhasil dihapus!');
+                    batalEdit();
+                    showAlert('success', 'Semua data berhasil dihapus!');
                 } catch (error) {
                     console.error('Error clearing data:', error);
-                    window.showAlert('error', 'Gagal menghapus data: ' + error.message);
+                    showAlert('error', 'Gagal menghapus data: ' + error.message);
                 } finally {
-                    const btnClear = document.querySelector('.btn-clear');
+                    const btnClear = document.getElementById('btnClear');
                     btnClear.disabled = false;
                     btnClear.textContent = '🗑️ Hapus Semua';
                 }
             }
         }
         
-        window.exportToExcel = function() {
-            if (data.length === 0) {
-                alert('Tidak ada data untuk diekspor!');
+        function exportToExcel() {
+            if (dataArray.length === 0) {
+                showAlert('error', 'Tidak ada data untuk diekspor!');
                 return;
             }
             
-            const excelData = data.map((item, index) => ({
+            const excelData = dataArray.map((item, index) => ({
                 'No': index + 1,
                 'Tanggal Pemeriksaan': formatTanggal(item.tanggal),
                 'Hari': item.hari,
@@ -916,7 +940,7 @@
             const jenisCount = {};
             let totalPasien = 0;
             
-            data.forEach(item => {
+            dataArray.forEach(item => {
                 jenisCount[item.jenis] = (jenisCount[item.jenis] || 0) + item.jumlah;
                 totalPasien += item.jumlah;
             });
@@ -953,7 +977,7 @@
             });
             
             const monthlyData = {};
-            data.forEach(item => {
+            dataArray.forEach(item => {
                 const date = new Date(item.tanggal + 'T00:00:00');
                 const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 
@@ -1044,8 +1068,16 @@
             const filename = `Laporan_Lab_Andrologi_${today}.xlsx`;
             
             XLSX.writeFile(wb, filename);
-            window.showAlert('success', 'File Excel berhasil diunduh!');
+            showAlert('success', 'File Excel berhasil diunduh!');
         }
+        
+        // Event listeners
+        document.getElementById('dokter').addEventListener('change', toggleDokterLainnya);
+        document.getElementById('btnAdd').addEventListener('click', tambahData);
+        document.getElementById('btnUpdate').addEventListener('click', updateData);
+        document.getElementById('btnCancel').addEventListener('click', batalEdit);
+        document.getElementById('btnExport').addEventListener('click', exportToExcel);
+        document.getElementById('btnClear').addEventListener('click', hapusSemua);
     </script>
 </body>
 </html>
